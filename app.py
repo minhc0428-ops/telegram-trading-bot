@@ -36,6 +36,10 @@ def supertrend(df, period=10, multiplier=3):
 @app.route("/")
 def home():
     return "BOT RUNNING"
+    @app.route("/run")
+def run():
+    send("🟢 BOT TEST OK")
+    return "ok"
 
 
 @app.route("/run")
