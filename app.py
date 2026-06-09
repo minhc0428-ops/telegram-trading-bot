@@ -6,19 +6,9 @@ app = Flask(__name__)
 TOKEN = "8547129446:AAF6Nd42RZlgx6W_GM-DEHKxJag0YmOorU4"
 CHAT_ID = "-1002561812973"
 
-from flask import Flask
-import requests
-import time
-import threading
-
-app = Flask(__name__)
-
-TOKEN = "YOUR_BOT_TOKEN"
-CHAT_ID = "-1002561812973"
-
-# =====================
-# SEND TELEGRAM
-# =====================
+# ======================
+# TELEGRAM SEND
+# ======================
 def send(msg):
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -26,73 +16,81 @@ def send(msg):
     except Exception as e:
         print("Telegram error:", e)
 
-
-# =====================
-# GET PRICE BINANCE
-# =====================
+# ======================
+# GET BINANCE PRICE
+# ======================
 def get_price(symbol="BTCUSDT"):
     url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
     data = requests.get(url).json()
     return float(data["price"])
 
+# ======================
+# SIMPLE SUPER TREND LOGIC (STABLE VERSION)
+# ======================
+def get_trend(prices, period=10):
+    if len(prices) < period:
+        return None
 
-# =====================
-# SIMPLE SUPER TREND (LIGHT VERSION)
-# =====================
-def fake_supertrend(price, prev):
-    # logic đơn giản hóa để chạy ổn định server
-    if prev is None:
-        return True
+    ma = sum(prices[-period:]) / period
+    return ma
 
-    if price > prev:
-        return True
-    else:
-        return False
-
-
-# =====================
+# ======================
 # BOT LOOP
-# =====================
+# ======================
 def bot_loop():
-    prev_price = None
+    prices = []
     prev_trend = None
 
     while True:
-        price = get_price("BTCUSDT")
+        try:
+            price = get_price("BTCUSDT")
+            prices.append(price)
 
-        trend = fake_supertrend(price, prev_price)
+            # giữ dữ liệu nhẹ
+            if len(prices) > 50:
+                prices.pop(0)
 
-        if prev_trend is not None:
-            if trend != prev_trend:
+            ma = get_trend(prices, 10)
+
+            if ma is None:
+                time.sleep(10)
+                continue
+
+            trend = price > ma  # TRUE = BUY bias
+
+            if prev_trend is not None and trend != prev_trend:
                 if trend:
-                    send(f"🟢 BUY SIGNAL BTC\nPrice: {price}")
+                    send(f"🟢 BUY SIGNAL BTC\nPrice: {price}\nMA10: {ma}")
                 else:
-                    send(f"🔴 SELL SIGNAL BTC\nPrice: {price}")
+                    send(f"🔴 SELL SIGNAL BTC\nPrice: {price}\nMA10: {ma}")
 
-        prev_price = price
-        prev_trend = trend
+            prev_trend = trend
 
-        time.sleep(60)  # mỗi 1 phút
+            time.sleep(30)
 
+        except Exception as e:
+            print("Loop error:", e)
+            time.sleep(10)
 
-# =====================
+# ======================
 # ROUTES
-# =====================
+# ======================
 @app.route("/")
 def home():
     return "BOT RUNNING"
 
 @app.route("/run")
 def run():
-    send("🟢 BOT MANUAL TEST OK")
+    send("🟢 MANUAL TEST OK - BOT WORKING")
     return "OK"
 
+# ======================
+# START BACKGROUND BOT
+# ======================
+threading.Thread(target=bot_loop, daemon=True).start()
 
-# =====================
-# START BACKGROUND THREAD
-# =====================
-threading.Thread(target=bot_loop).start()
-
-
+# ======================
+# START SERVER
+# ======================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
