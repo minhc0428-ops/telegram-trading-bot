@@ -6,37 +6,26 @@ app = Flask(__name__)
 TOKEN = "8547129446:AAF6Nd42RZlgx6W_GM-DEHKxJag0YmOorU4"
 CHAT_ID = "-1002561812973"
 
-# ======================
-# FUNCTION SEND TELEGRAM
-# ======================
-def send_message(text):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": text
-    }
-    requests.post(url, data=payload)
+
+def send(text):
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        requests.post(url, data={"chat_id": CHAT_ID, "text": text})
+    except Exception as e:
+        print("Telegram error:", e)
 
 
-# ======================
-# HOME CHECK
-# ======================
 @app.route("/")
 def home():
     return "BOT RUNNING"
 
 
-# ======================
-# TEST ROUTE (QUAN TRỌNG)
-# ======================
 @app.route("/run")
 def run():
-    send_message("🟢 BOT TEST OK - Telegram Connected")
-    return "OK - message sent"
+    send("🟢 BOT TEST OK - Render Working")
+    return "OK"
 
 
-# ======================
-# START SERVER
-# ======================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
